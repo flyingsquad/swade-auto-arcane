@@ -3,6 +3,18 @@ When this module is installed the trait on a power will be set to the skill or a
 If there are multiple arcane backgrounds the user will be asked which to use.
 
 You can add custom arcane backgrounds and the associated traits in the configuration settings for the module.
-Use the form "Arcane Background (Magic): Spellcasting" and separate entries with a semicolon separator. For example:
+Use the form "Arcane Background (Magic): Spellcasting" and separate entries with a semicolon separator. You
+can also use the SWID instead of the name. The SWID has priority over the name.
 
-Arcane
+For example:
+
+Arcane Background (Traveller): Spirit; arcane-background-magic: Smarts; Mage: Spellcasting; Cleric: Faith
+
+These settings would do the following:
+
+* Powers added to a character with the Traveller arcane background to have the trait
+set to Spirit.
+* The Magic arcane background would be overridden with Smarts.
+* 
+
+The arcan backgrounds must have the isArcaneBackground property set to true.
