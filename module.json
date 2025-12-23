@@ -1,0 +1,32 @@
+{
+  "id": "swade-auto-arcane",
+  "title": "SWADE Auto-Arcane",
+  "description": "Automatically set the trait on powers added to SWADE character sheets.",
+  "authors": [
+    {
+		"name": "flying-squad"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "packs": [
+    {
+      "name": "macros",
+      "label": "Macros",
+      "path": "packs/macros",
+      "type": "Macro",
+      "system": "swade",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    }
+  ],
+  "esmodules": ["auto-arcane.js"],
+  "url": "https://github.com/flyingsquad/swade-auto-arcane",
+  "manifest": "https://raw.githubusercontent.com/flyingsquad/swade-auto-arcane/main/module.json",
+  "version": "1.0.0",
+  "download": "https://github.com/flyingsquad/swade-auto-arcane/archive/refs/tags/v1.0.0.zip"
+}
