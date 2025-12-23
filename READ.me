@@ -8,7 +8,6 @@ can also use the SWID instead of the name. The SWID has priority over the name.
 
 For example:
 
-
 >Arcane Background (Traveller): Spirit; arcane-background-magic: Smarts; Mage: Spellcasting; Cleric: Faith
 
 These settings would do the following:
@@ -27,7 +26,6 @@ There is a macro provided that will set the traits for powers on all the selecte
 You can register custom arcane backgrounds in a "ready" hook by calling function: registerBackground(name, swid, trait). This allows you to write a module with a custom AB without requiring the user to set custom values in the settings of the world.
 
 For example:
-
 
 >Hooks.once('ready', () => {
 >	if (game.SWADEAutoArcane) {
