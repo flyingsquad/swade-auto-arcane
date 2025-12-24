@@ -7,6 +7,9 @@ export class SWADEAutoArcane {
 	initialized = false;
 	registeredBackgrounds = [];
 
+	powerPoints = [];
+	registeredPowerPoints = [];
+
 	setMappings() {
 		// FIX: The SWID handles the ABs in other languages. What about the skill names?
 		this.arcaneTraitMappings = [];
@@ -38,15 +41,51 @@ export class SWADEAutoArcane {
 				}
 			}
 		}
+		
+		this.powerPoints["Arcane Background (Magic)"] = 10;
+		this.powerPoints["Arcane Background (Gifted)"] = 15;
+		this.powerPoints["Arcane Background (Weird Science)"] = 15;
+		this.powerPoints["Arcane Background (Psionics)"] = 10;
+		this.powerPoints["Arcane Background (Miracles)"] = 10;
+
+		this.powerPoints["arcane-background-magic"] = 10;
+		this.powerPoints["arcane-background-gifted"] = 15;
+		this.powerPoints["arcane-background-weird-science"] = 15;
+		this.powerPoints["arcane-background-psionics"] = 10;
+		this.powerPoints["arcane-background-miracles"] = 10;
+		
+		for (let pp of this.registeredPowerPoints) {
+			if (pp.name)
+				this.powerPoints[pp.name] = pp.pp;
+			if (pp.swid)
+				this.powerPoints[pp.swid] = pp.pp;
+		}
+
+		const customPowerPoints = game.settings.get('swade-auto-arcane', 'powerPoints');
+		if (customPowerPoints) {
+			let values = customPowerPoints.split(/ *; */);
+			for (let mapping of values) {
+				let m = mapping.split(/ *: */);
+				if (m.length == 2) {
+					this.powerPoints[m[0].trim()] = parseInt(m[1]);
+				}
+			}
+		}
+
 		this.initialized = true;
 	}
 	
-	/**	Function for registering custom backgrounds. These will override
+	/**	Functions for registering custom backgrounds. These will override
 	 *	standard backgrounds.
 	 */
 
 	registerBackground(abname, abswid, trait) {
 		this.registeredBackgrounds.push({name: abname, swid: abswid, trait: trait});
+		this.initialized = false;
+	}
+	
+	registerPowerPoints(abname, abswid, pp) {
+		this.registeredPowerPoints.push({name: abname, swid: abswid, pp: pp});
 		this.initialized = false;
 	}
 	
@@ -56,7 +95,7 @@ export class SWADEAutoArcane {
 			let n = arcbg.name;
 			if (arcbg.system.swid)
 				n = arcbg.system.swid;
-			content += `<label for="arcbg" style="width: 400"><input type="radio" name="arcbg" value="${n}">${arcbg.name}</input></label>\n`;
+			content += `<tr><td style="width: 20%"><input type="radio" name="arcbg" value="${n}"></td><td>${arcbg.name}</td></tr>\n`;
 		}
 		
 		const actorName = actor.syntheticActor ? actor.syntheticActor.name : actor.name;
@@ -70,7 +109,7 @@ export class SWADEAutoArcane {
 				  }
 			  },
 			  modal: true,
-			  content: `<form width="500">${content}</form>\n`,
+			  content: `<table>${content}</table>\n`,
 			  buttons: [
 				{
 					action: "choice",
@@ -116,15 +155,33 @@ export class SWADEAutoArcane {
 	}
 
 	async itemCreated(item, action, id) {
-		if (item.type != 'power')
-			return;
-
 		let actor = action.parent;
 		if (!actor || !(actor.type == 'character' || actor.type == 'npc'))
 			return;
 
 		if (!this.initialized)
 			this.setMappings();
+
+		if (item.system.isArcaneBackground) {
+			// Don't set the power points if there's already another
+			// arcane background.
+			const ab = actor.items.find(it => it.isArcaneBackground);
+			if (ab)
+				return;
+
+			let pp = this.powerPoints[item.system.swid];
+			if (pp === undefined) {
+				pp = this.powerPoints[item.name];
+				if (pp === undefined)
+					return;
+			}
+			await actor.update({"system.powerPoints.general.max": pp});
+			return;
+		}
+
+		if (item.type != 'power')
+			return;
+
 
 		let arcaneTrait = await this.getArcaneTrait(actor);
 		if (!arcaneTrait)
@@ -206,6 +263,17 @@ Hooks.once('init', async function () {
 	game.settings.register('swade-auto-arcane', 'mappings', {
 	  name: 'Custom Arcane Background Traits',
 	  hint: `Enter custom traits for Arcane Backgrounds in the form "Arcane Background (Magic): Spellcasting", separated by semicolons. These entries override the standard mappings. The SWID for the arcane background can also be used and has priority over the name.`,
+	  scope: 'world',     // "world" = sync to db, "client" = local storage
+	  config: true,       // false if you dont want it to show in module config
+	  type: String,       // Number, Boolean, String, Object
+	  default: "",
+	  onChange: value => { // value is the new value of the setting
+		game.SWADEAutoArcane.setMappings();
+	  }
+	});
+	game.settings.register('swade-auto-arcane', 'powerPoints', {
+	  name: 'Custom Arcane Background Power Points',
+	  hint: `Enter custom power points for Arcane Backgrounds in the form "Arcane Background (Magic): 15", separated by semicolons. These entries override the standard mappings. The SWID for the arcane background can also be used and has priority over the name.`,
 	  scope: 'world',     // "world" = sync to db, "client" = local storage
 	  config: true,       // false if you dont want it to show in module config
 	  type: String,       // Number, Boolean, String, Object
