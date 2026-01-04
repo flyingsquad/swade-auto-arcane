@@ -23,6 +23,37 @@ export class SWADEAutoArcane {
 		this.arcaneTraitMappings["arcane-background-psionics"] = "Psionics";
 		this.arcaneTraitMappings["Arcane Background (Miracles)"] = "Faith";
 		this.arcaneTraitMappings["arcane-background-miracles"] = "Faith";
+
+		// Fantasy companion.
+
+		this.arcaneTraitMappings["Alchemist"] = "Alchemy";
+		this.arcaneTraitMappings["alchemist"] = "Alchemy";
+		this.arcaneTraitMappings["Bard"] = "Performance";
+		this.arcaneTraitMappings["bard"] = "Performance";
+		this.arcaneTraitMappings["Cleric"] = "Faith";
+		this.arcaneTraitMappings["cleric"] = "Faith";
+		this.arcaneTraitMappings["Diabolist"] = "Spellcasting";
+		this.arcaneTraitMappings["diabolist"] = "Spellcasting";
+		this.arcaneTraitMappings["Druid"] = "Faith";
+		this.arcaneTraitMappings["druid"] = "Faith";
+		this.arcaneTraitMappings["Elementalist"] = "Spellcasting";
+		this.arcaneTraitMappings["elementalist"] = "Spellcasting";
+		this.arcaneTraitMappings["Illusionist"] = "Spellcasting";
+		this.arcaneTraitMappings["illusionist"] = "Spellcasting";
+		this.arcaneTraitMappings["Necromancer"] = "Spellcasting";
+		this.arcaneTraitMappings["necromancer"] = "Spellcasting";
+		this.arcaneTraitMappings["Shaman"] = "Faith";
+		this.arcaneTraitMappings["shaman"] = "Faith";
+		this.arcaneTraitMappings["Summoner"] = "Spellcasting";
+		this.arcaneTraitMappings["summoner"] = "Spellcasting";
+		this.arcaneTraitMappings["Tinkerer"] = "Repair";
+		this.arcaneTraitMappings["tinkerer"] = "Repair";
+		this.arcaneTraitMappings["Warlock/Witch"] = "Spellcasting";
+		this.arcaneTraitMappings["Witch"] = "Spellcasting";
+		this.arcaneTraitMappings["Warlock"] = "Spellcasting";
+		this.arcaneTraitMappings["warlockwitch"] = "Spellcasting";
+		this.arcaneTraitMappings["Wizard"] = "Spellcasting";
+		this.arcaneTraitMappings["wizard"] = "Spellcasting";
 		
 		for (let m of this.registeredBackgrounds) {
 			if (m.name)
@@ -47,12 +78,42 @@ export class SWADEAutoArcane {
 		this.powerPoints["Arcane Background (Weird Science)"] = 15;
 		this.powerPoints["Arcane Background (Psionics)"] = 10;
 		this.powerPoints["Arcane Background (Miracles)"] = 10;
+		this.powerPoints["Alchemist"] = 15;
+		this.powerPoints["Bard"] = 10;
+		this.powerPoints["Cleric"] = 10;
+		this.powerPoints["Diabolist"] = 10;
+		this.powerPoints["Druid"] = 10;
+		this.powerPoints["Elementalist"] = 10;
+		this.powerPoints["Illusionist"] = 10;
+		this.powerPoints["Necromancer"] = 10;
+		this.powerPoints["Shaman"] = 10;
+		this.powerPoints["Sorcerer"] = 15;
+		this.powerPoints["Summoner"] = 15;
+		this.powerPoints["Tinkerer"] = 15;
+		this.powerPoints["Warlock/Witch"] = 10;
+		this.powerPoints["Warlock"] = 10;
+		this.powerPoints["Witch"] = 10;
+		this.powerPoints["Wizard"] = 15;
 
 		this.powerPoints["arcane-background-magic"] = 10;
 		this.powerPoints["arcane-background-gifted"] = 15;
 		this.powerPoints["arcane-background-weird-science"] = 15;
 		this.powerPoints["arcane-background-psionics"] = 10;
 		this.powerPoints["arcane-background-miracles"] = 10;
+		this.powerPoints["alchemist"] = 15;
+		this.powerPoints["bard"] = 10;
+		this.powerPoints["cleric"] = 10;
+		this.powerPoints["diabolist"] = 10;
+		this.powerPoints["druid"] = 10;
+		this.powerPoints["elementalist"] = 10;
+		this.powerPoints["illusionist"] = 10;
+		this.powerPoints["necromancer"] = 10;
+		this.powerPoints["shaman"] = 10;
+		this.powerPoints["sorcerer"] = 15;
+		this.powerPoints["summoner"] = 15;
+		this.powerPoints["tinkerer"] = 15;
+		this.powerPoints["warlockwitch"] = 10;
+		this.powerPoints["wizard"] = 15;
 		
 		for (let pp of this.registeredPowerPoints) {
 			if (pp.name)
@@ -95,7 +156,7 @@ export class SWADEAutoArcane {
 			let n = arcbg.name;
 			if (arcbg.system.swid)
 				n = arcbg.system.swid;
-			content += `<tr><td style="width: 20%"><input type="radio" name="arcbg" value="${n}"></td><td>${arcbg.name}</td></tr>\n`;
+			content += `<div style="display: flex; flex-direction: row"><label><input type="radio" name="arcbg" value="${n}">${arcbg.name}</label></div>\n`;
 		}
 		
 		const actorName = actor.syntheticActor ? actor.syntheticActor.name : actor.name;
@@ -105,15 +166,16 @@ export class SWADEAutoArcane {
 			  window: {
 				  title: `Choose Arcane Background for ${actorName}`,
 				  position: {
-					  width: 500
+					  width: 500,
+					  height: 400
 				  }
 			  },
 			  modal: true,
-			  content: `<table>${content}</table>\n`,
+			  content: `<form><p>${actorName} has multiple arcane backgrounds. Choose one to set on powers.</p>${content}</form>\n`,
 			  buttons: [
 				{
 					action: "choice",
-					label: "Continue",
+					label: "OK",
 					callback: (event, button, dialog) => {
 						return button.form.elements.arcbg.value;
 					}
