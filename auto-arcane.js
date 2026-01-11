@@ -150,18 +150,23 @@ export class SWADEAutoArcane {
 		this.initialized = false;
 	}
 	
-	async selectBackground(actor, arcbgs) {
+	async selectBackground(actor, arcbgs, prompt = null) {
 		let content = "";
+		let checked = ' checked';
 		for (const arcbg of arcbgs) {
 			let n = arcbg.name;
 			if (arcbg.system.swid)
 				n = arcbg.system.swid;
-			content += `<div style="display: flex; flex-direction: row"><label><input type="radio" name="arcbg" value="${n}">${arcbg.name}</label></div>\n`;
+			content += `<div style="display: flex; flex-direction: row"><label><input type="radio" name="arcbg" value="${n}"${checked}>${arcbg.name}</label></div>\n`;
+			checked = '';
 		}
 		
 		const actorName = actor.syntheticActor ? actor.syntheticActor.name : actor.name;
 
 		try {
+			if (!prompt)
+				prompt = `${actor.name} has multiple arcane backgrounds. Pick one.`;
+			let header = `<p>${prompt}</p>\n`;
 			let arcbg = await foundry.applications.api.DialogV2.wait({
 			  window: {
 				  title: `Choose Arcane Background for ${actorName}`,
@@ -171,7 +176,7 @@ export class SWADEAutoArcane {
 				  }
 			  },
 			  modal: true,
-			  content: `<form><p>${actorName} has multiple arcane backgrounds. Choose one to set on powers.</p>${content}</form>\n`,
+			  content: `<form>${header}${content}</form>\n`,
 			  buttons: [
 				{
 					action: "choice",
@@ -197,23 +202,48 @@ export class SWADEAutoArcane {
 		return null;
 	}
 
-	async getArcaneTrait(actor) {
+	async getArcaneTrait(actor, prompt = null) {
 		let arcbgs = actor.items.filter(it => it.system.isArcaneBackground);
 		if (arcbgs.length == 0)
-			return null;
+			return [null, null];
 		let arcbg;
 		if (arcbgs.length > 1) {
 			// User selects desired background.
-			let arcbgid = await this.selectBackground(actor, arcbgs);
+			let arcbgid = await this.selectBackground(actor, arcbgs, prompt);
 			if (!arcbgid)
-				return null;
-			return this.arcaneTraitMappings[arcbgid];
+				return [null, null];
+			return [arcbgid, this.arcaneTraitMappings[arcbgid]];
 		} else
 			arcbg = arcbgs[0];
 		let trait = this.arcaneTraitMappings[arcbg.system.swid];
 		if (trait)
-			return trait;
-		return this.arcaneTraitMappings[arcbg.name];
+			return [arcbg.system.swid, trait];
+		return [arcbg.system.swid, this.arcaneTraitMappings[arcbg.name]];
+	}
+
+	async itemDeleted(item, action, id) {
+		let actor = action.parent;
+		if (item.system.swid == 'power-points') {
+			let poolName = item.getFlag('swade-auto-arcane', 'poolName');
+			if (!poolName || actor.system.powerPoints[poolName].max < 5)
+				return;
+			let powerPoints = actor.system.powerPoints;
+			powerPoints[poolName].max -= 5;
+			if (powerPoints[poolName].value >= 5)
+				powerPoints[poolName].value -= 5;
+			actor.update({"system.powerPoints": powerPoints});
+			return;
+		}
+		if (item.system.isArcaneBackground) {
+			let poolName = item.getFlag('swade-auto-arcane', 'poolName');
+			if (!poolName || actor.system.powerPoints[poolName].max <= 0)
+				return;
+			let powerPoints = actor.system.powerPoints;
+			powerPoints[poolName].max = 0;
+			powerPoints[poolName].value = 0;
+			actor.update({"system.powerPoints": powerPoints});
+			return;
+		}
 	}
 
 	async itemCreated(item, action, id) {
@@ -225,35 +255,84 @@ export class SWADEAutoArcane {
 			this.setMappings();
 
 		if (item.system.isArcaneBackground) {
-			// Don't set the power points if there's already another
-			// arcane background.
-			const ab = actor.items.find(it => it.isArcaneBackground);
-			if (ab)
-				return;
+			// Create a second pool if there's already an arcane background.
+			let poolName = 'general';
+			const ab = actor.items.find(it => it.system.isArcaneBackground && it._id != item._id);
+			if (ab) {
+				const m = item.name.match(/Arcane Background *\((.+)\)/i);
+				if (m) {
+					poolName = m[1];
+				} else
+					poolName = item.name;
+			}
 
+			// Look first for an defined AB with a swid, then the name.
 			let pp = this.powerPoints[item.system.swid];
 			if (pp === undefined) {
 				pp = this.powerPoints[item.name];
 				if (pp === undefined)
 					return;
 			}
-			await actor.update({"system.powerPoints.general.max": pp});
+
+			let powerPoints = actor.system.powerPoints;
+			const pool = {max: pp, value: pp};
+			powerPoints[poolName] = pool;
+
+			await actor.update({"system.powerPoints": powerPoints});
+			item.setFlag('swade-auto-arcane', 'poolName', poolName);
+			return;
+		}
+		
+		if (item.system.swid == 'power-points') {
+			const ABs = actor.items.filter(it => it.system.isArcaneBackground);
+			let powerPool = 'general';
+			let powerPoints = actor.system.powerPoints;
+			if (ABs.length > 1) {
+				let arcbgid = await this.selectBackground(actor, ABs,
+					`${actor.name} has multiple arcane backgrounds. Choose the one to add the Power Points to.`);
+				if (!arcbgid)
+					return;
+				let ab = actor.items.find(it => it.system.swid == arcbgid);
+				if (ab) {
+					const poolName = ab.getFlag('swade-auto-arcane', 'poolName')
+					if (poolName)
+						powerPool = poolName;
+				}
+			} else if (ABs.length == 1) {
+				let pn = ABs[0].getFlag('swade-auto-arcane', 'poolName');
+				if (pn)
+					powerPool = pn;
+			}
+			powerPoints[powerPool].max += 5;
+			powerPoints[powerPool].value += 5;
+			actor.update({"system.powerPoints": powerPoints});
+			item.setFlag('swade-auto-arcane', 'poolName', powerPool);
 			return;
 		}
 
 		if (item.type != 'power')
 			return;
 
+		// If multiple ABs get the desired one and set the power pool.
 
-		let arcaneTrait = await this.getArcaneTrait(actor);
+		let [arcbgid, arcaneTrait] = await this.getArcaneTrait(actor,
+			`${actor.name} has multiple arcane backgrounds. Select the background for this power.`);
 		if (!arcaneTrait)
 			return;
 
 		// If the trait is already set on a power (say, by a grant)
 		// then don't set it.
 
-		if (!item.system.actions.trait)
-			await item.update({"system.actions.trait": arcaneTrait});
+		if (!item.system.actions.trait) {
+			let poolName = '';
+			let ab = actor.items.find(it => it.system.swid == arcbgid);
+			if (ab) {
+				poolName = ab.getFlag('swade-auto-arcane', 'poolName');
+				if (!poolName)
+					poolName = '';
+			}
+			await item.update({"system.actions.trait": arcaneTrait, "system.arcane": poolName});
+		}
 	}
 
 	/**	Set the arcane trait on all powers for the selected tokens.
@@ -278,7 +357,7 @@ export class SWADEAutoArcane {
 			if (!actor)
 				continue;
 
-			let trait = await this.getArcaneTrait(actor);
+			let [arcbgid, trait] = await this.getArcaneTrait(actor, `${actor.name} has multiple arcane backgrounds. Select the background to use for the character's powers.`);
 			if (!trait)
 				continue;
 
@@ -286,8 +365,16 @@ export class SWADEAutoArcane {
 			if (powers.length == 0)
 				continue;
 
+			let ab = actor.items.find(it => it.system.swid == arcbgid);
+			let poolName = '';
+			const pn = ab.getFlag('swade-auto-arcane', 'poolName');
+			if (pn)
+				poolName = pn;
+			if (poolName == 'general')
+				poolName = '';
+
 			for (let power of powers) {
-				power.update({"system.actions.trait": trait});
+				power.update({"system.actions.trait": trait, "system.arcane": poolName});
 				count++;
 			}
 			if (actors)
@@ -312,6 +399,10 @@ export class SWADEAutoArcane {
 
 Hooks.on("createItem", async (item, action, id) => {
 	await game.SWADEAutoArcane.itemCreated(item, action, id);
+});
+
+Hooks.on("deleteItem", async (item, action, id) => {
+	await game.SWADEAutoArcane.itemDeleted(item, action, id);
 });
 
 Hooks.on("init", function() {
