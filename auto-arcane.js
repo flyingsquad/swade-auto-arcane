@@ -331,6 +331,8 @@ export class SWADEAutoArcane {
 				if (!poolName)
 					poolName = '';
 			}
+			if (poolName == 'general')
+				poolName = '';
 			await item.update({"system.actions.trait": arcaneTrait, "system.arcane": poolName});
 		}
 	}
