@@ -55,6 +55,11 @@ export class SWADEAutoArcane {
 		this.arcaneTraitMappings["Wizard"] = "Spellcasting";
 		this.arcaneTraitMappings["wizard"] = "Spellcasting";
 		
+		// Horror.
+
+		this.arcaneTraitMappings["Mystic Powers"] = "Spirit";
+		this.arcaneTraitMappings["mystic-powers"] = "Spirit";
+		
 		for (let m of this.registeredBackgrounds) {
 			if (m.name)
 				this.arcaneTraitMappings[m.name] = m.trait;
@@ -85,6 +90,7 @@ export class SWADEAutoArcane {
 		this.powerPoints["Druid"] = 10;
 		this.powerPoints["Elementalist"] = 10;
 		this.powerPoints["Illusionist"] = 10;
+		this.powerPoints["Mystic Powers"] = 10;
 		this.powerPoints["Necromancer"] = 10;
 		this.powerPoints["Shaman"] = 10;
 		this.powerPoints["Sorcerer"] = 15;
@@ -107,6 +113,7 @@ export class SWADEAutoArcane {
 		this.powerPoints["druid"] = 10;
 		this.powerPoints["elementalist"] = 10;
 		this.powerPoints["illusionist"] = 10;
+		this.powerPoints["mystic-powers"] = 10;
 		this.powerPoints["necromancer"] = 10;
 		this.powerPoints["shaman"] = 10;
 		this.powerPoints["sorcerer"] = 15;
@@ -212,13 +219,91 @@ export class SWADEAutoArcane {
 			let arcbgid = await this.selectBackground(actor, arcbgs, prompt);
 			if (!arcbgid)
 				return [null, null];
-			return [arcbgid, this.arcaneTraitMappings[arcbgid]];
+			arcbg = actor.items.find(it => it.system.swid == arcbgid);
 		} else
 			arcbg = arcbgs[0];
-		let trait = this.arcaneTraitMappings[arcbg.system.swid];
+		let trait = arcbg.getFlag('swade-auto-arcane', 'trait');
+		if (!trait)
+			trait = this.arcaneTraitMappings[arcbg.system.swid];
+		if (!trait)
+			trait = this.arcaneTraitMappings[arcbg.name];
+		if (!trait) {
+			// Look in the arcane background description.
+			const desc = arcbg.system.description.replaceAll(/\<[^>]*\>/g, '');
+			let m = desc.match(/Arcane Skill:[^A-Za-z]*([A-Za-z]+)/);
+			if (m) {
+				if (actor.items.find(it => it.name == m[1]))
+					trait = m[1];
+				else if (m[1] == 'Spirit' || m[1] == 'Smarts')
+					trait = m[1];
+			}			
+		}
+		if (!trait) {
+			// Ask user to select trait.
+			const attrlang={
+				agility: "AttrAgi",
+				spirit:"AttrSpr",
+				strength: "AttrStr",
+				smarts:  "AttrSma",
+				vigor: "AttrVig"
+			};
+			const attributes=['agility','smarts','spirit','strength','vigor']
+
+			let skillList=[]
+			let content=`<div><div>
+				<p>Select a Trait to use for ${arcbg.name}.</p>
+				<p><label>${game.i18n.localize('SWADE.Trait')} </label> <select id="trait">\n`;
+
+			content += `<optgroup label="${game.i18n.localize('SWADE.Attributes')}">\n`;
+			attributes.map(att=>{
+				content+=`<option value="att-${att}">${game.i18n.localize('SWADE.'+attrlang[att])}</option>\n`;
+			})
+
+			content+=`</optgroup>
+			<optgroup label="${game.i18n.localize('SWADE.Skills')}">\n`
+
+			actor.items.filter(el => el.type == 'skill').map(skill => {
+				if (!skillList.includes(skill.name)){
+					content += `<option value="${skill.name}">${skill.name}</option>\n`;
+					skillList.push(skill.name);
+				}
+			});
+
+			content += `</select></p>\n
+			</div></div>`;
+
+			await foundry.applications.api.DialogV2.wait({
+				window: {
+					title: "Select Trait",
+				  position: {
+					  width: 300,
+					  height: 300
+				  }
+					
+				},
+				modal: true,
+				content: content,
+				buttons: [
+					{
+						action: "choice",
+						label: "OK",
+						callback: async (event, button, dialog) => {
+							trait = button.form.elements.trait.value;
+						}
+					},
+					{
+						action: "cancel",
+						label: "Cancel",
+						callback: (event, button, dialog) => {
+							trait = null;
+						}
+					}
+				]
+			});		
+		}
 		if (trait)
-			return [arcbg.system.swid, trait];
-		return [arcbg.system.swid, this.arcaneTraitMappings[arcbg.name]];
+			arcbg.setFlag('swade-auto-arcane', 'trait', trait);
+		return [arcbg.system.swid, trait];
 	}
 
 	async itemDeleted(item, action, id) {
@@ -259,7 +344,7 @@ export class SWADEAutoArcane {
 			let poolName = 'general';
 			const ab = actor.items.find(it => it.system.isArcaneBackground && it._id != item._id);
 			if (ab) {
-				const m = item.name.match(/Arcane Background *\((.+)\)/i);
+				const m = item.name.match(/[^(]+\((.+)\)/i);
 				if (m) {
 					poolName = m[1];
 				} else
@@ -270,8 +355,18 @@ export class SWADEAutoArcane {
 			let pp = this.powerPoints[item.system.swid];
 			if (pp === undefined) {
 				pp = this.powerPoints[item.name];
-				if (pp === undefined)
-					return;
+				if (pp === undefined) {
+					// Check for something like Mystic Powers (Demon--Tempter).
+					let baseName = item.name.replace(/ *\(.+\)/, '');
+					pp = this.powerPoints[baseName];
+					if (pp === undefined) {
+						// Search the text of the item to see if it specifies the PP.
+						let m = item.system.description.match(/Power Points:[^0-9]*([0-9]+)/);
+						if (!m)
+							return;
+						pp = m[1];
+					}
+				}
 			}
 
 			let powerPoints = actor.system.powerPoints;
