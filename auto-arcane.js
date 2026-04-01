@@ -159,13 +159,18 @@ export class SWADEAutoArcane {
 	
 	async selectBackground(actor, arcbgs, prompt = null) {
 		let content = "";
-		let checked = ' checked';
+		let prevABG = actor.getFlag('swade-auto-arcane', 'prevABG');
 		for (const arcbg of arcbgs) {
+			let checked = '';
 			let n = arcbg.name;
 			if (arcbg.system.swid)
 				n = arcbg.system.swid;
+			if (prevABG) {
+				if (prevABG == n)
+					checked = ' checked';
+			} else
+				checked = ' checked';
 			content += `<div style="display: flex; flex-direction: row"><label><input type="radio" name="arcbg" value="${n}"${checked}>${arcbg.name}</label></div>\n`;
-			checked = '';
 		}
 		
 		const actorName = actor.syntheticActor ? actor.syntheticActor.name : actor.name;
@@ -189,6 +194,7 @@ export class SWADEAutoArcane {
 					action: "choice",
 					label: "OK",
 					callback: (event, button, dialog) => {
+						actor.setFlag('swade-auto-arcane', 'prevABG', button.form.elements.arcbg.value);
 						return button.form.elements.arcbg.value;
 					}
 				},
