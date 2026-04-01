@@ -229,7 +229,8 @@ export class SWADEAutoArcane {
 			trait = this.arcaneTraitMappings[arcbg.name];
 		if (!trait) {
 			// Look in the arcane background description.
-			const desc = arcbg.system.description.replaceAll(/\<[^>]*\>/g, '');
+			let desc = arcbg.system.description.replaceAll(/\<\/p\>/g, "\n");
+			desc = arcbg.system.description.replaceAll(/\<[^>]*\>/g, '');
 			let m = desc.match(/Arcane Skill:[^A-Za-z]*([A-Za-z]+)/);
 			if (m) {
 				if (actor.items.find(it => it.name == m[1]))
@@ -351,6 +352,10 @@ export class SWADEAutoArcane {
 					poolName = item.name;
 			}
 
+			// Get the description without any HTML.
+			let desc = item.system.description.replaceAll(/\<\/p\>/g, "\n");
+			desc = desc.replaceAll(/\<[^>]*\>/g, '');
+
 			// Look first for an defined AB with a swid, then the name.
 			let pp = this.powerPoints[item.system.swid];
 			if (pp === undefined) {
@@ -361,14 +366,16 @@ export class SWADEAutoArcane {
 					pp = this.powerPoints[baseName];
 					if (pp === undefined) {
 						// Search the text of the item to see if it specifies the PP.
-						let m = item.system.description.match(/Power Points:[^0-9]*([0-9]+)/);
+						let m = desc.match(/Power Points:[^0-9]*([0-9]+)/);
 						if (!m)
 							return;
 						pp = m[1];
 					}
 				}
 			}
-
+			let m = desc.match(/Power Point Pool: *([A-Za-z ]+)/i);
+			if (m)
+				poolName = m[1];
 			let powerPoints = actor.system.powerPoints;
 			const pool = {max: pp, value: pp};
 			powerPoints[poolName] = pool;

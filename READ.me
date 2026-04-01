@@ -33,3 +33,14 @@ For example:
 >	}
 >});
 
+Finally, the module will attempt to pull this information out of the text description of the Arcane Background if it's not predefined. The following standard layout is assumed:
+
+* Arcane Skill: Faith (Spirit)
+
+* Starting Powers: 3
+
+* Power Points: 10
+
+* Power Point Pool: Priest
+
+The Power Point Pool is a new addition, for use with backgrounds that use grants with a Arcane power point pool specified in the mutation on the grant. If no power point pool is specified "general" is used for the first one, and the name of the arcane background is used for any others. For the form "Arcane Background (Magic)", the text inside the parentheses is used for the pool name. For names like "Bard", the background name is the name of the pool.
