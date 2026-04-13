@@ -508,10 +508,15 @@ export class SWADEAutoArcane {
 }
 
 Hooks.on("createItem", async (item, action, id) => {
+	if (id != game.user.id || !item.parent || action.isItemGrant)
+		return;
+	
 	await game.SWADEAutoArcane.itemCreated(item, action, id);
 });
 
 Hooks.on("deleteItem", async (item, action, id) => {
+	if (id != game.user.id || !item.parent || action.isItemGrant)
+		return;
 	await game.SWADEAutoArcane.itemDeleted(item, action, id);
 });
 
