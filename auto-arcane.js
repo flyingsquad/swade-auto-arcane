@@ -502,9 +502,40 @@ export class SWADEAutoArcane {
 	}
 	
 	async usePowerStone(actor, item) {
+		// Handle multiple power point pools
+		let options = "";
+		let count = 0;
+		let selected = " selected";
+		let pool = '';
+		for (const p in actor.system.powerPoints) {
+			count++;
+			let name = 'General';
+			if (p != 'general')
+				name = p;
+			options += `<option value="${p}"${selected}>${name} (${actor.system.powerPoints[p].value} PP)</option>`
+			selected = "";
+			if (!pool)
+				pool = p;
+		}
+		let select = "";
+		if (count > 1) {
+			select = `
+				<div style="display: table-row;">
+					<div style="display: table-cell">
+						<label for="pool">Power Point Pool:</label>
+					</div>
+					<div style="display: table-cell">
+						<select id="pool" name="pool">
+							${options}
+						</select>
+					</div>
+				</div>`;
+		}
+
 		const content = `<p>${item.name} has ${item.system?.charges.charges[0].value ? item.system.charges.charges[0].value : "no"} charges (quantity: ${item.system.quantity}).</p>
 			<div style="display: table; width: 300px;">
 				<div style="display: table-row-group">
+					${select}
 					<div style="display: table-row;">
 						<div style="display: table-cell">
 							<label for="damage">Power Points:</label>
@@ -525,7 +556,9 @@ export class SWADEAutoArcane {
 					action: "ok",
 					default: true,
 					callback: async (event, button, dialog) => {
-						use(actor, parseInt(button.form.elements.pp.valueAsNumber));
+						if (count > 1)
+							pool = button.form.elements.pool.value;
+						use(actor, pool, parseInt(button.form.elements.pp.valueAsNumber));
 						return true;
 					}
 				},
@@ -537,7 +570,7 @@ export class SWADEAutoArcane {
 			]
 		}).render(true);
 		
-		async function use(actor, pp) {
+		async function use(actor, pool, pp) {
 			if (!pp)
 				return ui.notifications.notify("No power points specified.");
 			if (!item.system.charges)
@@ -550,13 +583,14 @@ export class SWADEAutoArcane {
 			if (pp > charges)
 				return ui.notifications.notify(`${item.name} only has ${charges} charge(s).`);
 			await item.consume(pp);
-			await actor.update({
-				"system.powerPoints.general.value": actor.system.powerPoints.general.value+pp
-			});
+			let powerPoints = actor.system.powerPoints;
+			powerPoints[pool].value = powerPoints[pool].value + pp;
+			await actor.update({"system.powerPoints": powerPoints});
 			const detail = pp == charges ? "last " : "";
+			let poolUsed = (pool != 'general') ? ` ${pool}` : "";
 			ChatMessage.create({
 			  speaker: ChatMessage.getSpeaker({ actor: actor }),
-			content: `${actor.name} used ${detail}${pp} charges(s) from ${item.name}, increasing Power Points to ${actor.system.powerPoints.general.value}.`
+			content: `${actor.name} used ${detail}${pp} charge(s) from ${item.name}, increasing${poolUsed} Power Points to ${actor.system.powerPoints.general.value}.`
 			});
 		}
 	}
