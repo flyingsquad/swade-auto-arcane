@@ -531,6 +531,14 @@ export class SWADEAutoArcane {
 					</div>
 				</div>`;
 		}
+		
+		let value = "";
+		let ncharges = 0; // number of charges to deduct. zero means use the pp entered.
+
+		if (item.system.swid == 'recharge-potion') {
+			value = ` value="10" readonly`;
+			ncharges = 1;
+		}
 
 		const content = `<p>${item.name} has ${item.system?.charges.charges[0].value ? item.system.charges.charges[0].value : "no"} charges (quantity: ${item.system.quantity}).</p>
 			<div style="display: table; width: 300px;">
@@ -541,7 +549,7 @@ export class SWADEAutoArcane {
 							<label for="damage">Power Points:</label>
 						</div>
 						<div style="display: table-cell">
-							<input type="number" id="pp" name="pp" maxlength="2" size="2">
+							<input type="number" id="pp" name="pp" maxlength="2" size="2"${value}>
 						</div>
 					</div>
 				</div>
@@ -573,6 +581,8 @@ export class SWADEAutoArcane {
 		async function use(actor, pool, pp) {
 			if (!pp)
 				return ui.notifications.notify("No power points specified.");
+			if (ncharges == 0)
+				ncharges = pp;
 			if (!item.system.charges)
 				return ui.notifications.notify(`${item.name} has no charges defined.`);
 			if (item.system.quantity <= 0)
@@ -580,9 +590,10 @@ export class SWADEAutoArcane {
 			let charges = item.system.charges.charges[0].value;
 			if (charges <= 0)
 				return ui.notifications.notify(`${item.name} is out of charges.`);
-			if (pp > charges)
+			if (ncharges > charges)
 				return ui.notifications.notify(`${item.name} only has ${charges} charge(s).`);
-			await item.consume(pp);
+
+			await item.consume(ncharges);
 			let powerPoints = actor.system.powerPoints;
 			powerPoints[pool].value = powerPoints[pool].value + pp;
 			await actor.update({"system.powerPoints": powerPoints});
@@ -590,7 +601,7 @@ export class SWADEAutoArcane {
 			let poolUsed = (pool != 'general') ? ` ${pool}` : "";
 			ChatMessage.create({
 			  speaker: ChatMessage.getSpeaker({ actor: actor }),
-			content: `${actor.name} used ${detail}${pp} charge(s) from ${item.name}, increasing${poolUsed} Power Points to ${actor.system.powerPoints.general.value}.`
+			content: `${actor.name} used ${detail}${ncharges} charge(s) from ${item.name}, increasing${poolUsed} Power Points to ${actor.system.powerPoints.general.value}.`
 			});
 		}
 	}
