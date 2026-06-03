@@ -601,7 +601,7 @@ export class SWADEAutoArcane {
 			let poolUsed = (pool != 'general') ? ` ${pool}` : "";
 			ChatMessage.create({
 			  speaker: ChatMessage.getSpeaker({ actor: actor }),
-			content: `${actor.name} used ${detail}${ncharges} charge(s) from ${item.name}, increasing${poolUsed} Power Points to ${actor.system.powerPoints.general.value}.`
+			content: `${actor.name} used ${detail}${ncharges} charge(s) from ${item.name}, increasing${poolUsed} Power Points to ${powerPoints[pool].value}.`
 			});
 		}
 	}
