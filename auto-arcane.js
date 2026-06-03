@@ -501,6 +501,66 @@ export class SWADEAutoArcane {
 			ui.notifications.notify(`Set ${traits} on ${count} power(s) for ${actors}`);	
 	}
 	
+	async usePowerStone(actor, item) {
+		const content = `<p>${item.name} has ${item.system?.charges.charges[0].value ? item.system.charges.charges[0].value : "no"} charges (quantity: ${item.system.quantity}).</p>
+			<div style="display: table; width: 300px;">
+				<div style="display: table-row-group">
+					<div style="display: table-row;">
+						<div style="display: table-cell">
+							<label for="damage">Power Points:</label>
+						</div>
+						<div style="display: table-cell">
+							<input type="number" id="pp" name="pp" maxlength="2" size="2">
+						</div>
+					</div>
+				</div>
+			</div>`;
+
+		const dlg = new foundry.applications.api.DialogV2({
+			window: { title: "Use Power Stone" },
+			content: content,
+			buttons: [
+				{
+					label: "OK",
+					action: "ok",
+					default: true,
+					callback: async (event, button, dialog) => {
+						use(actor, parseInt(button.form.elements.pp.valueAsNumber));
+						return true;
+					}
+				},
+				{
+					action: "cancel",
+					label: "Cancel",
+					callback: (event, button, dialog) => { return false; }
+				}
+			]
+		}).render(true);
+		
+		async function use(actor, pp) {
+			if (!pp)
+				return ui.notifications.notify("No power points specified.");
+			if (!item.system.charges)
+				return ui.notifications.notify(`${item.name} has no charges defined.`);
+			if (item.system.quantity <= 0)
+				return ui.notifications.notify(`${item.name} has a quantity of zero -- all charges used.`);
+			let charges = item.system.charges.charges[0].value;
+			if (charges <= 0)
+				return ui.notifications.notify(`${item.name} is out of charges.`);
+			if (pp > charges)
+				return ui.notifications.notify(`${item.name} only has ${charges} charge(s).`);
+			await item.consume(pp);
+			await actor.update({
+				"system.powerPoints.general.value": actor.system.powerPoints.general.value+pp
+			});
+			const detail = pp == charges ? "last " : "";
+			ChatMessage.create({
+			  speaker: ChatMessage.getSpeaker({ actor: actor }),
+			content: `${actor.name} used ${detail}${pp} charges(s) from ${item.name}, increasing Power Points to ${actor.system.powerPoints.general.value}.`
+			});
+		}
+	}
+	
 	static {
 		console.log("SWADEAutoArcane | loaded.");
 	}
