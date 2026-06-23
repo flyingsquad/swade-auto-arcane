@@ -501,6 +501,10 @@ export class SWADEAutoArcane {
 			ui.notifications.notify(`Set ${traits} on ${count} power(s) for ${actors}`);	
 	}
 	
+	async useCharge(actor, item) {
+		item.consume(1);
+	}
+	
 	async usePowerStone(actor, item) {
 		// Handle multiple power point pools
 		let options = "";
